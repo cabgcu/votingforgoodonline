@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Lip Sync 2025 Voting</title>
 
-<!-- ✅ Updated Meta -->
 <meta name="theme-color" content="#000000">
-<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -20,11 +18,13 @@
 <!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
 
-/* Firebase Config */
+/* ======================
+   Firebase Configuration
+   ====================== */
 const firebaseConfig = {
   apiKey: "AIzaSyBoYf1_IhILJ96Y9KMcwrVjHMFLT5YEKuQ",
   authDomain: "lip-sync-2025.firebaseapp.com",
@@ -35,17 +35,17 @@ const firebaseConfig = {
   measurementId: "G-NQ0GMG05Q2"
 };
 
-/* Initialize Firebase + App Check */
+/* Initialize Firebase */
 const app = initializeApp(firebaseConfig);
-initializeAppCheck(app, {
+
+/* ✅ Initialize App Check (reCAPTCHA v3) */
+const appCheck = initializeAppCheck(app, {
   provider: new ReCaptchaV3Provider('6LdIDf8rAAAAAN29EDUYVkddlpw3QQy9ImSPFpm1'),
   isTokenAutoRefreshEnabled: true
 });
 
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-let userId = null;
+/* Globals */
+let db, auth, userId;
 let visitorId = null;
 let selectedVoteId = null;
 let selectedVoteName = "";
@@ -63,51 +63,23 @@ const performerData = {
   option6: { name: "Anonymity", img: "https://i.imgur.com/3dJQFeX.jpeg" },
 };
 
-/* DOM references */
-let performersContainer, submitVoteButton, confirmationMessage, confirmationImage;
+/* DOM Elements */
+let startButton, performersContainer, submitVoteButton, confirmationMessage, confirmationImage;
 
-/* =========================
-   PHONE NUMBER VERIFICATION
-   ========================= */
-window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
+document.addEventListener("DOMContentLoaded", () => {
+  startButton = document.getElementById("start-btn");
+  performersContainer = document.getElementById("performers-container");
+  submitVoteButton = document.getElementById("submit-vote-btn");
+  confirmationMessage = document.getElementById("confirmation-message");
+  confirmationImage = document.getElementById("confirmation-image");
+});
 
-async function sendCode() {
-  const phoneNumber = document.getElementById("phoneInput").value.trim();
-  if (!phoneNumber) return alert("Please enter your phone number.");
-  try {
-    const appVerifier = window.recaptchaVerifier;
-    const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-    window.confirmationResult = confirmationResult;
-    document.getElementById("verify-section").classList.remove("hidden");
-    document.getElementById("sendCodeBtn").disabled = true;
-    alert("Verification code sent!");
-  } catch (e) {
-    alert(e.message);
-  }
-}
-
-async function verifyCode() {
-  const code = document.getElementById("codeInput").value.trim();
-  if (!code) return alert("Please enter the verification code.");
-  try {
-    const result = await window.confirmationResult.confirm(code);
-    userId = result.user.uid;
-    alert("Phone number verified!");
-    setScreen("voting-screen");
-    initApp();
-  } catch {
-    alert("Invalid or expired verification code.");
-  }
-}
-
-/* =========================
-   MAIN APP / VOTING LOGIC
-   ========================= */
 function setScreen(id) {
   document.querySelectorAll(".screen").forEach(el => el.classList.add("hidden"));
   document.getElementById(id).classList.remove("hidden");
 }
 
+/* Restore existing vote on refresh */
 async function restoreVoteIfExists() {
   if (!visitorId) return;
   const snap = await getDoc(doc(db, "lip_sync_2025_votes", visitorId));
@@ -125,6 +97,7 @@ async function restoreVoteIfExists() {
   }
 }
 
+/* Card Selection */
 function handleCardSelection(e) {
   const card = e.target.closest(".performer-card");
   if (!card || !votingEnabled) return;
@@ -139,20 +112,23 @@ function handleCardSelection(e) {
   submitVoteButton.classList.add("ready");
 }
 
+/* Submit Vote */
 async function submitVote(voteId, btn) {
-  if (!visitorId || !userId) return;
+  if (!visitorId) return;
   if (!votingEnabled) return;
+
   btn.disabled = true;
   btn.textContent = "Submitting...";
+
   try {
     await setDoc(doc(db, "lip_sync_2025_votes", visitorId), {
       voteId,
       createdAt: Date.now(),
       userId,
       fingerprint: visitorId,
-      userAgent: navigator.userAgent,
-      source: "remote"
+      userAgent: navigator.userAgent
     });
+
     confirmationImage.src = selectedVoteImage;
     confirmationMessage.innerHTML = `
       Your vote for <b>${selectedVoteName}</b> has been recorded.<br><br>
@@ -166,19 +142,19 @@ async function submitVote(voteId, btn) {
   }
 }
 
-async function initApp() {
-  performersContainer = document.getElementById("performers-container");
-  submitVoteButton = document.getElementById("submit-vote-btn");
-  confirmationMessage = document.getElementById("confirmation-message");
-  confirmationImage = document.getElementById("confirmation-image");
-
+/* Initialize */
+function initApp() {
   FingerprintJS.load()
     .then(fp => fp.get())
     .then(async r => {
       visitorId = r.visitorId;
-      await restoreVoteIfExists();
-    });
+      startButton.disabled = false;
+      startButton.classList.add("glow");
+      await restoreVoteIfExists(); // restore previous vote
+    })
+    .catch(() => console.warn("Fingerprint init failed"));
 
+  startButton.addEventListener("click", () => setScreen("voting-screen"));
   performersContainer.addEventListener("click", handleCardSelection);
   submitVoteButton.addEventListener("click", () => submitVote(selectedVoteId, submitVoteButton));
 
@@ -188,7 +164,10 @@ async function initApp() {
   });
 }
 
-onAuthStateChanged(auth, (u) => {
+/* Firebase Auth + Firestore */
+db = getFirestore(app);
+auth = getAuth(app);
+onAuthStateChanged(auth, u => {
   if (u) {
     userId = u.uid;
     if (!appInitialized) {
@@ -197,10 +176,7 @@ onAuthStateChanged(auth, (u) => {
     }
   }
 });
-
-/* ✅ Expose for onclick buttons */
-window.sendCode = sendCode;
-window.verifyCode = verifyCode;
+signInAnonymously(auth).catch(console.error);
 </script>
 
 <!-- Styles -->
@@ -212,7 +188,11 @@ html, body {
   color: white; overflow: hidden;
   background-color: black;
 }
-#bg-video { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; opacity: 0.8; }
+#bg-video {
+  position: fixed; top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  object-fit: cover; z-index: 0; opacity: 0.8;
+}
 .screen, .glass-card { position: relative; z-index: 1; }
 .glass-card {
   background: rgba(0,0,0,0.45);
@@ -220,6 +200,12 @@ html, body {
   border-radius: 1.5rem;
   border: 1px solid rgba(255,255,255,0.15);
 }
+@keyframes pink-green-glow {
+  0% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
+  50% { box-shadow: 0 0 25px 5px rgba(96,163,77,0.9); }
+  100% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
+}
+button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
 .performer-card.selected {
   border: 2px solid #22c55e;
   box-shadow: 0 0 20px 3px rgba(34,197,94,0.5);
@@ -231,22 +217,23 @@ html, body {
   box-shadow: 0 0 12px 2px rgba(34,197,94,0.6);
   transition: all 0.3s ease;
 }
-button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
-@keyframes pink-green-glow {
-  0% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
-  50% { box-shadow: 0 0 25px 5px rgba(96,163,77,0.9); }
-  100% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
+.spinner {
+  border:3px solid rgba(255,255,255,0.15);
+  border-top-color:#fff;
+  border-radius:50%;
+  width:22px;height:22px;
+  animation:spin .9s linear infinite;
+  margin:0 auto;
 }
-.screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1rem; }
-#recaptcha-container { display: none; }
-.frosted-input {
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(10px);
-  color: white;
-  border: 1px solid rgba(255,255,255,0.2);
-  text-align: center;
+@keyframes spin{to{transform:rotate(360deg)}}
+#performers-container {
+  overflow-y: auto; max-height: 60vh; padding-right: 4px;
 }
-.frosted-input::placeholder { color: rgba(255,255,255,0.6); text-align: center; }
+.screen {
+  position: fixed; inset: 0;
+  display: flex; align-items: center;
+  justify-content: center; padding: 1rem;
+}
 </style>
 </head>
 
@@ -255,24 +242,12 @@ button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
   <source src="https://i.imgur.com/mAzP2S1.mp4" type="video/mp4">
 </video>
 
-<!-- PHONE VERIFY CARD -->
-<div id="phone-auth-screen" class="screen">
-  <div class="glass-card flex flex-col justify-between items-center text-center p-8 w-11/12 max-w-md rounded-3xl min-h-[460px] shadow-2xl mt-10 mb-10">
+<!-- LOGIN -->
+<div id="login-screen" class="screen">
+  <div class="glass-card flex flex-col justify-between items-center text-center p-8 w-11/12 max-w-md rounded-3xl min-h-[440px] shadow-2xl mt-10 mb-10">
     <img class="w-full max-w-[240px] mb-6" src="https://i.imgur.com/EnuWGLA.png" alt="Lip Sync Vote Header">
-    <p class="text-white/70 text-base mb-6 max-w-sm">Enter your phone number to verify and begin voting.</p>
-
-    <div class="w-full flex flex-col items-center">
-      <input id="phoneInput" type="tel" placeholder="+1 555 555 5555" class="frosted-input p-3 w-10/12 rounded-lg mb-3">
-      <button id="sendCodeBtn" onclick="sendCode()" class="w-10/12 bg-white/20 py-2 rounded-lg mb-3">Send Code</button>
-
-      <div id="verify-section" class="hidden w-10/12">
-        <input id="codeInput" type="text" placeholder="Enter code" class="frosted-input p-3 w-full rounded-lg mb-3">
-        <button onclick="verifyCode()" class="w-full bg-green-500 py-2 rounded-lg">Verify</button>
-      </div>
-    </div>
-
-    <div id="recaptcha-container"></div>
-
+    <p class="text-white/70 text-base mb-8 max-w-sm">Tap below to begin voting.</p>
+    <button id="start-btn" class="w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition duration-200 glow">Begin Voting</button>
     <footer class="pt-6 text-white/70 text-sm flex flex-col items-center max-w-sm mt-6">
       <img src="https://ik.imagekit.io/cabgcu/Untitled%20design-3.png" alt="CAB Logo" class="h-12 mb-3 object-contain">
       <p>Follow Us At <b>@CABGCU</b> On Instagram</p>
@@ -287,7 +262,7 @@ button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
     <h3 class="text-xl font-semibold mb-2">Vote For Your Favorite Lip Sync Team!</h3>
     <p class="text-white/70 text-sm mb-4">Each attendee may submit only one vote per device.</p>
 
-    <div id="performers-container" class="space-y-4 flex-1 overflow-y-auto">
+    <div id="performers-container" class="space-y-4 flex-1">
       <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option1">
         <img src="https://i.imgur.com/DIyK2zX.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2">
         <h4 class="text-lg font-semibold">Below</h4>
