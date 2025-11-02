@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Lip Sync 2025 Voting</title>
 
+<!-- ✅ Updated Meta -->
 <meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -22,7 +24,7 @@ import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged }
 import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
 
-/* Firebase config */
+/* Firebase Config */
 const firebaseConfig = {
   apiKey: "AIzaSyBoYf1_IhILJ96Y9KMcwrVjHMFLT5YEKuQ",
   authDomain: "lip-sync-2025.firebaseapp.com",
@@ -64,9 +66,9 @@ const performerData = {
 /* DOM references */
 let performersContainer, submitVoteButton, confirmationMessage, confirmationImage;
 
-/* ================
-   Phone Auth Setup
-   ================ */
+/* =========================
+   PHONE NUMBER VERIFICATION
+   ========================= */
 window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
 
 async function sendCode() {
@@ -98,9 +100,9 @@ async function verifyCode() {
   }
 }
 
-/* ================
-   Voting Functions
-   ================ */
+/* =========================
+   MAIN APP / VOTING LOGIC
+   ========================= */
 function setScreen(id) {
   document.querySelectorAll(".screen").forEach(el => el.classList.add("hidden"));
   document.getElementById(id).classList.remove("hidden");
@@ -195,6 +197,10 @@ onAuthStateChanged(auth, (u) => {
     }
   }
 });
+
+/* ✅ Expose for onclick buttons */
+window.sendCode = sendCode;
+window.verifyCode = verifyCode;
 </script>
 
 <!-- Styles -->
