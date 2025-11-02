@@ -136,7 +136,6 @@ function initApp() {
     .then(async r => {
       visitorId = r.visitorId;
       await restoreVoteIfExists();
-      // Directly open voting screen now
       setScreen("voting-screen");
     })
     .catch(() => alert("Unable to verify identity. Please refresh."));
