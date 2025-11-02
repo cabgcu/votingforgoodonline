@@ -19,6 +19,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { initializeAppCheck, ReCaptchaV3Provider } 
+  from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
 
 /* Firebase Config */
 const firebaseConfig = {
@@ -150,6 +152,13 @@ function initApp() {
 
 /* Firebase Init */
 const app = initializeApp(firebaseConfig);
+
+/* ✅ Add App Check (reCAPTCHA v3) */
+const appCheck = initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider('6LdIDf8rAAAAAN29EDUYVkddlpw3QQy9ImSPFpm1'),
+  isTokenAutoRefreshEnabled: true
+});
+
 db = getFirestore(app);
 auth = getAuth(app);
 onAuthStateChanged(auth, u => {
