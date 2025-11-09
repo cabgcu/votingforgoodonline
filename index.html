@@ -17,16 +17,28 @@
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-html,body{margin:0;height:100%;background:black;color:white;font-family:'Inter',sans-serif;overflow:hidden;-webkit-user-select:none;touch-action:manipulation;}
+html,body{margin:0;min-height:100%;background:black;color:white;font-family:'Inter',sans-serif;
+  overflow-x:hidden;-webkit-user-select:none;touch-action:manipulation;}
 #bg-video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:0;opacity:.8;}
-.glass-card{background:rgba(0,0,0,.45);backdrop-filter:blur(24px);border-radius:1.5rem;border:1px solid rgba(255,255,255,.15);}
-@keyframes pink-green-glow{0%{box-shadow:0 0 15px 2px rgba(255,105,180,.7);}50%{box-shadow:0 0 25px 5px rgba(96,163,77,.9);}100%{box-shadow:0 0 15px 2px rgba(255,105,180,.7);}}
-button.glow{animation:pink-green-glow 8s ease-in-out infinite;}
+.screen{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;
+  flex-direction:column;padding:2rem 1rem;z-index:10;}
+.glass-card{background:rgba(0,0,0,.45);backdrop-filter:blur(20px);border-radius:1.25rem;
+  border:1px solid rgba(255,255,255,.15);width:100%;max-width:420px;overflow:hidden;}
+@keyframes pink-green-glow{
+  0%{box-shadow:0 0 10px 1px rgba(255,105,180,.6);}
+  50%{box-shadow:0 0 18px 3px rgba(96,163,77,.8);}
+  100%{box-shadow:0 0 10px 1px rgba(255,105,180,.6);}
+}
+button.glow{animation:pink-green-glow 6s ease-in-out infinite;}
 .performer-card.selected{border:2px solid #22c55e;box-shadow:0 0 20px 3px rgba(34,197,94,.5);}
-#submit-vote-btn.ready{background:#22c55e!important;color:black!important;border:none!important;box-shadow:0 0 12px 2px rgba(34,197,94,.6);transition:all .3s ease;}
-.spinner{border:3px solid rgba(255,255,255,.15);border-top-color:#fff;border-radius:50%;width:22px;height:22px;animation:spin .9s linear infinite;margin:0 auto;}
+#submit-vote-btn.ready{background:#22c55e!important;color:black!important;border:none!important;
+  box-shadow:0 0 10px 2px rgba(34,197,94,.6);transition:all .3s ease;}
+.spinner{border:3px solid rgba(255,255,255,.15);border-top-color:#fff;border-radius:50%;
+  width:22px;height:22px;animation:spin .9s linear infinite;margin:0 auto;}
 @keyframes spin{to{transform:rotate(360deg)}}
-.screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.hidden{opacity:0!important;pointer-events:none;}
+#voting-screen{overflow-y:auto;-webkit-overflow-scrolling:touch;}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
 
@@ -37,19 +49,19 @@ button.glow{animation:pink-green-glow 8s ease-in-out infinite;}
 
 <!-- NAME ENTRY -->
 <div id="name-screen" class="screen">
-  <div class="glass-card flex flex-col items-center text-center p-8 w-11/12 max-w-md rounded-3xl h-auto shadow-2xl my-4">
-    <img class="w-full max-w-[240px] mb-6 opacity-0 transition-all duration-500" id="header-logo" src="https://i.imgur.com/EnuWGLA.png" alt="Lip Sync Header">
+  <div class="glass-card flex flex-col items-center text-center p-6 w-11/12 max-w-md shadow-2xl my-4">
+    <img class="w-full max-w-[240px] mb-4 opacity-0 transition-all duration-500" id="header-logo" src="https://i.imgur.com/EnuWGLA.png" alt="Lip Sync Header">
     <h2 class="text-xl font-bold mb-2">Welcome to Lip Sync 2025!</h2>
     <p class="text-white/70 text-base mb-6 max-w-sm">Enter your name to begin voting for your favorite team.</p>
     <input id="name-input" type="text" placeholder="Enter Your Name"
-      class="w-full p-3 rounded-lg bg-white/10 text-white border border-white/30 text-center mb-4"/>
+      class="w-full p-3 rounded-lg bg-white/10 text-white border border-white/30 text-center mb-3 text-base"/>
     <button id="continue-btn"
-      class="w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition duration-200 disabled:opacity-40">
+      class="glow w-full p-3 text-base text-white rounded-lg border border-white/50 shadow-lg transition disabled:opacity-40">
       <div class="spinner"></div>
     </button>
-    <footer class="pt-6 text-white/70 text-sm flex flex-col items-center max-w-sm mt-6">
+    <footer class="pt-6 text-white/70 text-sm flex flex-col items-center max-w-sm mt-4 mb-2">
       <img src="https://ik.imagekit.io/cabgcu/Untitled%20design-3.png" alt="CAB Logo"
-        class="h-12 mb-3 object-contain" onerror="this.style.display='none'">
+        class="h-10 mb-2 object-contain" onerror="this.style.display='none'">
       <p>Follow Us At <b>@CABGCU</b> On Instagram</p>
     </footer>
   </div>
@@ -57,23 +69,25 @@ button.glow{animation:pink-green-glow 8s ease-in-out infinite;}
 
 <!-- VOTING -->
 <div id="voting-screen" class="screen hidden">
-  <div class="glass-card w-11/12 max-w-md rounded-3xl p-4 text-center shadow-2xl flex flex-col max-h-[95vh]">
-    <img class="w-full max-w-[180px] mx-auto mb-4" src="https://i.imgur.com/EnuWGLA.png" alt="Header">
-    <h3 class="text-xl font-semibold mb-2">Vote For Your Favorite Team!</h3>
-    <p class="text-white/70 text-sm mb-4">Each viewer may submit only one vote per device.</p>
-    <div id="performers-container" class="space-y-4 flex-1 overflow-y-auto"></div>
+  <div class="glass-card w-full max-w-md p-5 text-center shadow-2xl flex flex-col my-8">
+    <img class="w-full max-w-[180px] mx-auto mb-3" src="https://i.imgur.com/EnuWGLA.png" alt="Header">
+    <h3 id="voting-header" class="text-xl font-semibold mb-2">Vote For Your Favorite Team!</h3>
+    <p id="voting-subtext" class="text-white/70 text-sm mb-3">Each viewer may submit only one vote per device.</p>
+    <div id="performers-container"
+         class="space-y-3 flex-1 min-h-[40vh] max-h-[55vh] overflow-y-auto -mr-1 pr-2
+         scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent rounded-xl"></div>
     <button id="submit-vote-btn"
-      class="mt-6 w-full py-3 px-8 text-base bg-black border border-white/50 text-white rounded-xl transition disabled:opacity-40"
+      class="mt-5 w-full py-3 px-6 text-base bg-black border border-white/50 text-white rounded-xl transition disabled:opacity-40"
       disabled>Select a Performer to Vote</button>
   </div>
 </div>
 
 <!-- CONFIRMATION -->
 <div id="confirmation-screen" class="screen hidden">
-  <div class="glass-card w-11/12 max-w-sm rounded-3xl p-8 text-center shadow-2xl">
-    <h3 class="text-3xl font-bold mb-4 text-white">✅ Submission Received!</h3>
-    <img id="confirmation-image" class="w-full max-w-[240px] mx-auto rounded-xl mb-6" alt="Team Image">
-    <p id="confirmation-message" class="text-white text-base mb-6"></p>
+  <div class="glass-card w-11/12 max-w-sm rounded-3xl p-6 text-center shadow-2xl">
+    <h3 class="text-2xl font-bold mb-3 text-white">✅ Submission Received!</h3>
+    <img id="confirmation-image" class="w-full max-w-[240px] mx-auto rounded-xl mb-4" alt="Team Image">
+    <p id="confirmation-message" class="text-white text-base mb-4"></p>
   </div>
 </div>
 
@@ -110,9 +124,8 @@ async function initializeFirebase(){
   const app=initializeApp(firebaseConfig);
   initializeAppCheck(app,{provider:new ReCaptchaV3Provider('6LdIDf8rAAAAAN29EDUYVkddlpw3QQy9ImSPFpm1'),isTokenAutoRefreshEnabled:true});
   db=getFirestore(app);auth=getAuth(app);
-
-  await waitForAuth(); // ✅ ensures UID exists
-  await new Promise(r=>setTimeout(r,500)); // buffer for App Check
+  await waitForAuth();
+  await new Promise(r=>setTimeout(r,500));
   deviceHash=await generateDeviceHash();
   unlockContinueButton();
   onSnapshot(doc(db,"lip_sync_2025_settings","state"),s=>{if(s.exists())votingEnabled=s.data().enabled;});
@@ -129,16 +142,9 @@ function waitForAuth(){
 
 async function generateDeviceHash(){
   const fp=await FingerprintJS.load();const r=await fp.get();
-  const traits=[
-    navigator.userAgent,
-    navigator.language,
-    screen.width,
-    screen.height,
-    navigator.hardwareConcurrency,
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
-    r.components.platform?.value||"",
-    r.components.vendor?.value||""
-  ].join("|");
+  const traits=[navigator.userAgent,navigator.language,screen.width,screen.height,
+    navigator.hardwareConcurrency,Intl.DateTimeFormat().resolvedOptions().timeZone,
+    r.components.platform?.value||"",r.components.vendor?.value||""].join("|");
   const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(traits));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
 }
@@ -167,10 +173,7 @@ async function restoreVoteOrShowVoting(){
       const v=vSnap.data().voteId;const p=performers[v];
       showConfirmation(p.name,p.img,true);
     }else showVoting();
-  }catch(e){
-    console.error(e);
-    showVoting();
-  }
+  }catch{showVoting();}
 }
 
 function showVoting(){
