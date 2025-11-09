@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Lip Sync 2025 Online Voting</title>
 
-<meta name="theme-color" content="#000000">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="mobile-web-app-capable" content="yes" />
 
 <!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
@@ -33,6 +33,7 @@ const firebaseConfig = {
   measurementId: "G-NQ0GMG05Q2"
 };
 
+/* ========= Globals ========= */
 let db, auth, userId, visitorId = null;
 let votingEnabled = true;
 let selectedVoteId = null;
@@ -50,10 +51,10 @@ const performerData = {
   option6: { name: "Anonymity", img: "https://i.imgur.com/3dJQFeX.jpeg" },
 };
 
-/* ========= DOM Elements ========= */
 let startButton, performersContainer, submitVoteButton, confirmationMessage, confirmationImage;
 
-document.addEventListener("DOMContentLoaded", () => {
+/* ========= Initialize ========= */
+document.addEventListener("DOMContentLoaded", async () => {
   startButton = document.getElementById("start-btn");
   performersContainer = document.getElementById("performers-container");
   submitVoteButton = document.getElementById("submit-vote-btn");
@@ -62,6 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   try {
     const app = initializeApp(firebaseConfig);
+
     initializeAppCheck(app, {
       provider: new ReCaptchaV3Provider('6LdIDf8rAAAAAN29EDUYVkddlpw3QQy9ImSPFpm1'),
       isTokenAutoRefreshEnabled: true
@@ -117,7 +119,7 @@ function handleCardSelection(e) {
   submitVoteButton.classList.add("ready");
 }
 
-/* ========= Updated Submit Vote (with online tag) ========= */
+/* ========= Submit Vote ========= */
 async function submitVote(voteId, btn) {
   if (!visitorId) return alert("Fingerprint not ready.");
   if (!votingEnabled) return alert("Voting is currently closed.");
@@ -131,9 +133,10 @@ async function submitVote(voteId, btn) {
     const snap = await getDoc(voteRef);
 
     if (snap.exists()) {
-      confirmationImage.src = performerData[snap.data().voteId]?.img || "";
+      const prev = performerData[snap.data().voteId];
+      confirmationImage.src = prev?.img || "";
       confirmationMessage.innerHTML = `
-        You already voted for <b>${performerData[snap.data().voteId]?.name || "a team"}</b>.<br><br>
+        You already voted for <b>${prev?.name || "a team"}</b>.<br><br>
         Thank you for attending <b>Lip Sync: For Good!</b>
       `;
       setScreen("confirmation-screen");
@@ -146,7 +149,7 @@ async function submitVote(voteId, btn) {
       userId,
       fingerprint: visitorId,
       userAgent: navigator.userAgent,
-      voteSource: "online" // 👈 marks this version as ONLINE votes
+      voteSource: "online" // ✅ IMPORTANT: marks this version as online
     });
 
     confirmationImage.src = selectedVoteImage;
@@ -157,17 +160,17 @@ async function submitVote(voteId, btn) {
     setScreen("confirmation-screen");
   } catch (e) {
     console.error("Submit error:", e);
+    alert("Error submitting vote: " + e.message);
     btn.disabled = false;
-    btn.textContent = "Vote Failed – Retry";
-    alert("There was a problem saving your vote.");
+    btn.textContent = "Retry Vote";
   }
 }
 
-/* ========= Initialize ========= */
 function initializeAppLogic() {
   if (appInitialized) return;
   appInitialized = true;
 
+  // Fingerprint
   FingerprintJS.load()
     .then(fp => fp.get())
     .then(r => {
@@ -193,9 +196,10 @@ function initializeAppLogic() {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       userId = user.uid;
+      console.log("Anonymous user signed in:", user.uid);
       await restoreVoteIfExists();
     } else {
-      signInAnonymously(auth).catch(err => console.error(err));
+      await signInAnonymously(auth);
     }
   });
 }
@@ -203,20 +207,29 @@ function initializeAppLogic() {
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-html, body {margin:0;height:100%;font-family:'Inter',sans-serif;color:white;overflow:hidden;background-color:black;}
-#bg-video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:0;opacity:0.8;}
-.screen,.glass-card{position:relative;z-index:1;}
-.glass-card{background:rgba(0,0,0,0.45);backdrop-filter:blur(24px);border-radius:1.5rem;border:1px solid rgba(255,255,255,0.15);}
-@keyframes pink-green-glow{0%{box-shadow:0 0 15px 2px rgba(255,105,180,0.7);}50%{box-shadow:0 0 25px 5px rgba(96,163,77,0.9);}100%{box-shadow:0 0 15px 2px rgba(255,105,180,0.7);}}
-button.glow{animation:pink-green-glow 8s ease-in-out infinite;}
-.performer-card.selected{border:2px solid #22c55e;box-shadow:0 0 20px 3px rgba(34,197,94,0.5);}
-#submit-vote-btn.ready{background-color:#22c55e!important;color:black!important;box-shadow:0 0 12px 2px rgba(34,197,94,0.6);}
-.spinner{border:3px solid rgba(255,255,255,0.15);border-top-color:#fff;border-radius:50%;width:22px;height:22px;animation:spin .9s linear infinite;margin:0 auto;}
-@keyframes spin{to{transform:rotate(360deg)}}
-#performers-container{overflow-y:auto;padding-right:4px;}
-.screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:1rem;}
-#performers-container::-webkit-scrollbar{display:none;}
-#performers-container{-ms-overflow-style:none;scrollbar-width:none;}
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: 'Inter', sans-serif;
+  color: white;
+  overflow: hidden;
+  background-color: black;
+}
+#bg-video { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; opacity: 0.8; }
+.screen, .glass-card { position: relative; z-index: 1; }
+.glass-card { background: rgba(0,0,0,0.45); backdrop-filter: blur(24px); border-radius: 1.5rem; border: 1px solid rgba(255,255,255,0.15); }
+button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
+@keyframes pink-green-glow {
+  0% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
+  50% { box-shadow: 0 0 25px 5px rgba(96,163,77,0.9); }
+  100% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
+}
+.performer-card.selected { border: 2px solid #22c55e; box-shadow: 0 0 20px 3px rgba(34,197,94,0.5); }
+#submit-vote-btn.ready { background-color: #22c55e !important; color: black !important; box-shadow: 0 0 12px 2px rgba(34,197,94,0.6); }
+.screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+#performers-container { overflow-y: auto; padding-right: 4px; }
+#performers-container::-webkit-scrollbar { display: none; }
+#performers-container { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
 </head>
 
