@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 
-<!-- Tailwind -->
+<!-- Tailwind (fine for short event use) -->
 <script defer src="https://cdn.tailwindcss.com"></script>
 
 <!-- FingerprintJS -->
@@ -29,6 +29,8 @@ button.glow{animation:pink-green-glow 8s ease-in-out infinite;}
 #performers-container::-webkit-scrollbar{display:none;}
 .screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:1rem;}
 .hidden{display:none;}
+.spinner{border:3px solid rgba(255,255,255,0.15);border-top-color:#fff;border-radius:50%;width:24px;height:24px;animation:spin .9s linear infinite;margin:auto;}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 
@@ -45,9 +47,8 @@ button.glow{animation:pink-green-glow 8s ease-in-out infinite;}
     <input type="text" id="name-input" placeholder="Your Name"
       class="w-full p-3 rounded-lg bg-white/10 text-white border border-white/30 text-center mb-4 focus:outline-none">
     <button id="name-btn"
-      class="glow w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition duration-200">
-      Continue
-    </button>
+      class="w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition duration-200 opacity-60"
+      disabled><div class="spinner"></div></button>
     <footer class="pt-8 text-white/70 text-sm flex flex-col items-center max-w-sm mt-6">
       <img src="https://ik.imagekit.io/cabgcu/Untitled%20design-3.png" alt="CAB Logo"
         class="h-12 mb-3 object-contain" onerror="this.style.display='none'">
@@ -87,9 +88,8 @@ import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com
 
 const firebaseConfig={apiKey:"AIzaSyBoYf1_IhILJ96Y9KMcwrVjHMFLT5YEKuQ",authDomain:"lip-sync-2025.firebaseapp.com",projectId:"lip-sync-2025",storageBucket:"lip-sync-2025.appspot.com",messagingSenderId:"118581305479",appId:"1:118581305479:web:7a7335c1be6e816cc7d822",measurementId:"G-NQ0GMG05Q2"};
 
-let db,auth,userId,deviceHash=null,votingEnabled=true,voterName="";
+let db,auth,userId,deviceHash=null,votingEnabled=true,voterName="",initialized=false;
 let selectedVoteId=null,selectedVoteName="",selectedVoteImage="";
-let appInitialized=false;
 
 const performerData={
   option1:{name:"Below",img:"https://i.imgur.com/DIyK2zX.jpeg"},
@@ -106,7 +106,17 @@ async function initializeFirebase(){
   const app=initializeApp(firebaseConfig);
   initializeAppCheck(app,{provider:new ReCaptchaV3Provider('6LdIDf8rAAAAAN29EDUYVkddlpw3QQy9ImSPFpm1'),isTokenAutoRefreshEnabled:true});
   db=getFirestore(app);auth=getAuth(app);
-  initializeAppLogic();
+
+  try{
+    deviceHash=await generateDeviceHash();
+    await new Promise(r=>setTimeout(r,500));
+    await waitForAuth();
+    setupUI();
+    console.log("✅ Firebase ready, no 403 errors expected.");
+  }catch(e){
+    console.error("Firebase init error:",e);
+    alert("Error initializing voting system. Please refresh.");
+  }
 }
 
 async function generateDeviceHash(){
@@ -116,15 +126,64 @@ async function generateDeviceHash(){
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
 }
 
-function setScreen(id){document.querySelectorAll(".screen").forEach(el=>el.classList.add("hidden"));document.getElementById(id).classList.remove("hidden");}
-
-function handleCardSelection(e){
-  const c=e.target.closest(".performer-card");if(!c)return;
-  document.querySelectorAll(".performer-card").forEach(x=>x.classList.remove("selected"));
-  c.classList.add("selected");
-  selectedVoteId=c.dataset.voteId;selectedVoteName=performerData[selectedVoteId].name;selectedVoteImage=performerData[selectedVoteId].img;
-  const b=document.getElementById("submit-vote-btn");b.disabled=false;b.textContent=`Submit Vote for ${selectedVoteName}`;b.classList.add("ready");
+function waitForAuth(){
+  return new Promise(resolve=>{
+    onAuthStateChanged(auth,async u=>{
+      if(u){userId=u.uid;resolve();}
+      else await signInAnonymously(auth);
+    });
+  });
 }
+
+function setupUI(){
+  if(initialized)return;initialized=true;
+  const nameBtn=document.getElementById("name-btn");
+  const subBtn=document.getElementById("submit-vote-btn");
+
+  nameBtn.innerHTML="Continue";
+  nameBtn.classList.add("glow","opacity-100");
+  nameBtn.disabled=false;
+
+  nameBtn.addEventListener("click",()=>{
+    const input=document.getElementById("name-input");
+    if(!input.value.trim()){input.placeholder="Please enter your name";input.classList.add("border-red-500");return;}
+    voterName=input.value.trim();
+    setScreen("voting-screen");
+  });
+
+  document.getElementById("performers-container").addEventListener("click",handleCardSelection);
+  subBtn.addEventListener("click",()=>submitVote(selectedVoteId,subBtn));
+
+  const sRef=doc(db,"lip_sync_2025_settings","state");
+  onSnapshot(sRef,s=>{
+    if(s.exists()){votingEnabled=s.data().enabled;
+      const header=document.getElementById("voting-header");
+      const sub=document.getElementById("voting-subtext");
+      const btn=document.getElementById("submit-vote-btn");
+      if(!votingEnabled){
+        header.textContent="Voting Is Now Closed!";
+        sub.textContent="Thank you for joining Lip Sync: For Good!";
+        document.getElementById("performers-container").innerHTML="";
+        btn.disabled=true;
+        btn.textContent="Voting Closed";
+      }else{
+        header.textContent="Vote For Your Favorite Lip Sync Team!";
+        sub.textContent="Each viewer may submit only one vote per device.";
+      }
+    }
+  });
+
+  restoreVoteIfExists();
+  const cont=document.getElementById("performers-container");
+  cont.innerHTML=Object.entries(performerData).map(([id,{name,img}])=>
+    `<div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="${id}">
+      <img src="${img}" class="w-full aspect-video object-cover rounded-lg mb-2" alt="${name}">
+      <h4 class="text-lg font-semibold">${name}</h4>
+    </div>`).join('');
+}
+
+function setScreen(id){document.querySelectorAll(".screen").forEach(el=>el.classList.add("hidden"));document.getElementById(id).classList.remove("hidden");}
+function handleCardSelection(e){const c=e.target.closest(".performer-card");if(!c)return;document.querySelectorAll(".performer-card").forEach(x=>x.classList.remove("selected"));c.classList.add("selected");selectedVoteId=c.dataset.voteId;selectedVoteName=performerData[selectedVoteId].name;selectedVoteImage=performerData[selectedVoteId].img;const b=document.getElementById("submit-vote-btn");b.disabled=false;b.textContent=`Submit Vote for ${selectedVoteName}`;b.classList.add("ready");}
 
 async function submitVote(voteId,btn){
   if(!deviceHash||!userId)return;
@@ -161,64 +220,11 @@ async function restoreVoteIfExists(){
       document.getElementById("confirmation-image").src=p.img;
       document.getElementById("confirmation-message").innerHTML=`Your vote for <b>${p.name}</b> has been recorded.<br><br>Thank you for watching <b>Lip Sync: For Good!</b>`;
       setScreen("confirmation-screen");
-    }else await restoreVoteByDeviceHash();
-  }catch{setScreen("name-screen");}
-}
-
-async function restoreVoteByDeviceHash(){
-  if(!deviceHash)return setScreen("name-screen");
-  const s=await getDoc(doc(db,"voted_fingerprints",deviceHash));
-  if(s.exists()){
-    const p=performerData[s.data().voteId];
-    document.getElementById("confirmation-image").src=p.img;
-    document.getElementById("confirmation-message").innerHTML=`This device has already voted for <b>${p.name}</b>.<br><br>Thank you for watching <b>Lip Sync: For Good!</b>`;
-    setScreen("confirmation-screen");
-  }else setScreen("name-screen");
-}
-
-async function initializeAppLogic(){
-  if(appInitialized)return;appInitialized=true;
-  const nameBtn=document.getElementById("name-btn");
-  const subBtn=document.getElementById("submit-vote-btn");
-
-  nameBtn.addEventListener("click",()=>{
-    const input=document.getElementById("name-input");
-    if(!input.value.trim()){input.placeholder="Please enter your name";input.classList.add("border-red-500");return;}
-    voterName=input.value.trim();
-    setScreen("voting-screen");
-  });
-
-  document.getElementById("performers-container").addEventListener("click",handleCardSelection);
-  subBtn.addEventListener("click",()=>submitVote(selectedVoteId,subBtn));
-
-  const sRef=doc(db,"lip_sync_2025_settings","state");
-  onSnapshot(sRef,s=>{
-    if(s.exists()){votingEnabled=s.data().enabled;
-      const header=document.getElementById("voting-header");
-      const sub=document.getElementById("voting-subtext");
-      const btn=document.getElementById("submit-vote-btn");
-      if(!votingEnabled){
-        header.textContent="Voting Is Now Closed!";
-        sub.textContent="Thank you for joining Lip Sync: For Good!";
-        document.getElementById("performers-container").innerHTML="";
-        btn.disabled=true;
-        btn.textContent="Voting Closed";
-      }else{
-        header.textContent="Vote For Your Favorite Lip Sync Team!";
-        sub.textContent="Each viewer may submit only one vote per device.";
-      }
+    }else{
+      const f=await getDoc(doc(db,"voted_fingerprints",deviceHash));
+      if(f.exists()){const p=performerData[f.data().voteId];document.getElementById("confirmation-image").src=p.img;document.getElementById("confirmation-message").innerHTML=`This device has already voted for <b>${p.name}</b>.<br><br>Thank you for watching <b>Lip Sync: For Good!</b>`;setScreen("confirmation-screen");}
     }
-  });
-
-  try{deviceHash=await generateDeviceHash();}catch{alert("Unable to verify device identity.");}
-  onAuthStateChanged(auth,async u=>{if(u){userId=u.uid;await restoreVoteIfExists();}else await signInAnonymously(auth);});
-
-  const cont=document.getElementById("performers-container");
-  cont.innerHTML=Object.entries(performerData).map(([id,{name,img}])=>
-    `<div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="${id}">
-      <img src="${img}" class="w-full aspect-video object-cover rounded-lg mb-2" alt="${name}">
-      <h4 class="text-lg font-semibold">${name}</h4>
-    </div>`).join('');
+  }catch(e){console.log("Vote restore check skipped (init race).",e);}
 }
 </script>
 </body>
