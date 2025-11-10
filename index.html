@@ -107,6 +107,7 @@ const firebaseConfig={
 };
 
 let db,auth,userId,deviceHash=null,userName="",votingEnabled=true;
+
 const performers={
   option1:{name:"Below",img:"https://i.imgur.com/DIyK2zX.jpeg"},
   option2:{name:"Deliverance",img:"https://i.imgur.com/s7Unz9r.jpeg"},
@@ -126,8 +127,19 @@ async function initializeFirebase(){
   try{deviceHash=await generateDeviceHash();}catch{alert("Unable to verify device identity.");}
 
   onAuthStateChanged(auth,async(u)=>{
-    if(u){userId=u.uid;watchVotingStatus();}
+    if(u){userId=u.uid;await checkVotingStatus();}
     else await signInAnonymously(auth);
+  });
+}
+
+async function checkVotingStatus(){
+  const sRef=doc(db,"lip_sync_2025_settings","state");
+  onSnapshot(sRef,async(s)=>{
+    if(!s.exists())return;
+    votingEnabled=s.data().enabled;
+    if(!votingEnabled)return showVotingClosed();
+    const already=await checkExistingVote();
+    if(!already)unlockContinueButton();
   });
 }
 
@@ -140,10 +152,8 @@ async function generateDeviceHash(){
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
 }
 
-function setScreen(id){
-  document.querySelectorAll(".screen").forEach(s=>s.classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
-}
+function setScreen(id){document.querySelectorAll(".screen").forEach(s=>s.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");}
 
 function unlockContinueButton(){
   const btn=document.getElementById("continue-btn");
@@ -151,20 +161,7 @@ function unlockContinueButton(){
   btn.innerHTML="<span>Continue</span>";
   btn.disabled=false;
   document.getElementById("header-logo").classList.remove("opacity-0");
-  btn.addEventListener("click",handleContinue);
-}
-
-async function watchVotingStatus(){
-  const sRef=doc(db,"lip_sync_2025_settings","state");
-  onSnapshot(sRef,async(s)=>{
-    if(!s.exists())return;
-    votingEnabled=s.data().enabled;
-    if(!votingEnabled)return showVotingClosed();
-
-    // Check if this device already voted
-    const already=await checkExistingVote();
-    if(!already)unlockContinueButton();
-  });
+  btn.onclick=handleContinue;
 }
 
 async function checkExistingVote(){
@@ -177,18 +174,6 @@ async function checkExistingVote(){
     return true;
   }
   return false;
-}
-
-function showVotingClosed(){
-  setScreen("voting-screen");
-  const header=document.getElementById("voting-header");
-  const sub=document.getElementById("voting-subtext");
-  const cont=document.getElementById("performers-container");
-  const btn=document.getElementById("submit-vote-btn");
-  header.textContent="Voting Is Now Closed!";
-  sub.textContent="Thank you for joining Lip Sync: For Good!";
-  cont.innerHTML=`<div class='p-2'><img src='https://i.imgur.com/kWKvSbS.jpeg' class='vertical-image mx-auto' alt='Voting Closed'></div>`;
-  btn.disabled=true;btn.textContent="Voting Closed";
 }
 
 async function handleContinue(){
@@ -207,7 +192,7 @@ function showVoting(){
       <img src="${img}" class="w-full aspect-video object-cover rounded-lg mb-2" alt="${name}">
       <h4 class="text-lg font-semibold">${name}</h4>
     </div>`).join('');
-  cont.addEventListener("click",handleCardSelection);
+  cont.onclick=handleCardSelection;
 }
 
 let selectedVoteId=null,selectedVoteName="",selectedVoteImage="";
@@ -245,6 +230,18 @@ async function submitVote(){
       showConfirmation(p.name,p.img,true);
     }else alert("Error submitting vote. Please refresh.");
   }
+}
+
+function showVotingClosed(){
+  setScreen("voting-screen");
+  const header=document.getElementById("voting-header");
+  const sub=document.getElementById("voting-subtext");
+  const cont=document.getElementById("performers-container");
+  const btn=document.getElementById("submit-vote-btn");
+  header.textContent="Voting Is Now Closed!";
+  sub.textContent="Thank you for joining Lip Sync: For Good!";
+  cont.innerHTML=`<div class='p-2'><img src='https://i.imgur.com/kWKvSbS.jpeg' class='vertical-image mx-auto' alt='Voting Closed'></div>`;
+  btn.disabled=true;btn.textContent="Voting Closed";
 }
 
 function showConfirmation(name,img,already=false){
