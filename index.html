@@ -121,10 +121,10 @@ let db,auth,userId,deviceHash=null,userName="",votingEnabled=true;
 
 const performers={
   option1:{name:"Below",img:"https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/DIyK2zX%20-%20Imgur.jpg?alt=media&token=556535f9-b60c-4fd7-a365-e9cef3f78ecd"},
-  option2:{name:"Deliverance",img:"https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/s7Unz9r%20-%20Imgur.jpg?alt=media&token=c8479380-c66d-4778-9ba2-36eb161a84de"},
+  option2:{name:"Deliverance",img:"https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/s7Unz9r%20-%20Imgur.jpg?alt=media&token=c8479380-c66d-4778-9ba2-36ebe161a84de"},
   option3:{name:"Mask Off",img:"https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/x0BI8Mc%20-%20Imgur.jpg?alt=media&token=f2d1ab93-aa73-412e-b00e-a1cdef71d9ee"},
   option4:{name:"Metro Motion",img:"https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/4rG47gL%20-%20Imgur.jpg?alt=media&token=1262b438-78f8-4ca4-ba6e-69cb35a8edad"},
-  option5:{name:"Sin Game",img:"https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/k75mMUz%20-%20Imgur.jpg?alt=media&token=577a7b48-68e6-4171-ac7d-531ee35a850e"},
+  option5:{name:"Sin Game",img:"https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/k75mMUz%20-%20Imgur.jpg?alt=media&token=577a7b48-68e6-4171-ac7d-531ee35b850e"},
   option6:{name:"Anonymity",img:"https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/3dJQFeX%20-%20Imgur.jpg?alt=media&token=dd2e317e-ac13-47eb-bd15-97f8491d4fc2"}
 };
 
@@ -141,7 +141,6 @@ async function initializeFirebase(){
     if(u){
       userId=u.uid;
 
-      // NEW SAFE METHOD — deviceHash now equals Firebase anonymous UID
       deviceHash = userId;
 
       await checkVotingStatus();
